@@ -208,6 +208,52 @@
       gap: 16px;
     }
 
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfd;
+      min-height: 78px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 22px;
+    }
+
+    .chart {
+      display: flex;
+      align-items: end;
+      gap: 4px;
+      height: 120px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfd;
+      overflow: hidden;
+    }
+
+    .bar {
+      flex: 1;
+      min-width: 8px;
+      border-radius: 4px 4px 0 0;
+      background: var(--accent);
+    }
+
+    .hint-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
     pre {
       overflow: auto;
       margin: 0;
@@ -220,7 +266,8 @@
 
     @media (max-width: 860px) {
       .grid,
-      .row {
+      .row,
+      .metrics {
         grid-template-columns: 1fr;
       }
     }
@@ -287,6 +334,46 @@
     </div>
 
     <section style="margin-top:16px;">
+      <h2>부하테스트 / 관측</h2>
+      <form id="load-form">
+        <div class="row">
+          <div>
+            <label for="totalRequests">totalRequests</label>
+            <input id="totalRequests" name="totalRequests" type="number" min="1" max="1000" value="100" required>
+          </div>
+          <div>
+            <label for="concurrency">concurrency</label>
+            <input id="concurrency" name="concurrency" type="number" min="1" max="100" value="10" required>
+          </div>
+        </div>
+        <label for="mode">mode</label>
+        <select id="mode" name="mode">
+          <option value="cached">cached - 동일 콘텐츠 반복</option>
+          <option value="unique">unique - 매 요청 다른 콘텐츠</option>
+        </select>
+        <div class="actions">
+          <button type="submit" id="run-load">부하테스트 실행</button>
+          <button class="secondary" type="button" id="reload-metrics">지표 새로고침</button>
+        </div>
+      </form>
+
+      <div style="margin-top:16px;" class="metrics" id="metric-cards">
+        <div class="metric"><span class="muted">p95 latency</span><strong>-</strong></div>
+        <div class="metric"><span class="muted">avg latency</span><strong>-</strong></div>
+        <div class="metric"><span class="muted">error rate</span><strong>-</strong></div>
+        <div class="metric"><span class="muted">memory RSS</span><strong>-</strong></div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="muted">p95 latency trend</div>
+        <div class="chart" id="latency-chart"></div>
+      </div>
+
+      <div style="margin-top:14px;" id="load-result" class="muted">부하테스트 실행 또는 지표 새로고침 후 결과가 표시됩니다.</div>
+      <div style="margin-top:14px;" id="bottleneck"></div>
+    </section>
+
+    <section style="margin-top:16px;">
       <h2>운영정책 룰</h2>
       <div class="actions">
         <button class="secondary" type="button" id="reload-rules">새로고침</button>
@@ -300,6 +387,12 @@
     const rules = document.querySelector("#rules");
     const logs = document.querySelector("#logs");
     const form = document.querySelector("#check-form");
+    const loadForm = document.querySelector("#load-form");
+    const loadResult = document.querySelector("#load-result");
+    const metricCards = document.querySelector("#metric-cards");
+    const latencyChart = document.querySelector("#latency-chart");
+    const bottleneck = document.querySelector("#bottleneck");
+    const latencyHistory = [];
 
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, (char) => ({
@@ -381,6 +474,56 @@
       `;
     }
 
+    function renderMetricCards(data) {
+      const errorRate = `${(data.errorRate * 100).toFixed(2)}%`;
+      metricCards.innerHTML = `
+        <div class="metric"><span class="muted">p95 latency</span><strong>${data.p95LatencyMs} ms</strong></div>
+        <div class="metric"><span class="muted">avg latency</span><strong>${data.avgLatencyMs} ms</strong></div>
+        <div class="metric"><span class="muted">error rate</span><strong>${errorRate}</strong></div>
+        <div class="metric"><span class="muted">memory RSS</span><strong>${data.memoryRssMb} MB</strong></div>
+      `;
+    }
+
+    function renderLatencyChart(value) {
+      latencyHistory.push(value);
+      if (latencyHistory.length > 30) latencyHistory.shift();
+      const max = Math.max(...latencyHistory, 1);
+      latencyChart.innerHTML = latencyHistory.map((latency) => {
+        const height = Math.max(6, Math.round((latency / max) * 100));
+        return `<div class="bar" title="${latency}ms" style="height:${height}%;"></div>`;
+      }).join("");
+    }
+
+    function renderBottleneck(data) {
+      const pool = data.dbPool;
+      const redis = data.redis;
+      bottleneck.innerHTML = `
+        <div class="metrics">
+          <div class="metric"><span class="muted">DB pool</span><strong>${pool.checkedOut}/${pool.size}</strong><span class="muted">checked-out / size</span></div>
+          <div class="metric"><span class="muted">DB overflow</span><strong>${pool.overflow}</strong><span class="muted">${pool.class}</span></div>
+          <div class="metric"><span class="muted">Redis</span><strong>${redis.status}</strong><span class="muted">${redis.pingMs ?? "-"} ms</span></div>
+          <div class="metric"><span class="muted">requests</span><strong>${data.totalRequests}</strong><span class="muted">${data.requestsPerSecond} req/s since boot</span></div>
+        </div>
+        <ul class="hint-list">
+          ${data.bottleneckHints.map((hint) => `<li>${escapeHtml(hint)}</li>`).join("")}
+        </ul>
+      `;
+    }
+
+    function renderLoadResult(data) {
+      loadResult.innerHTML = `
+        <table>
+          <tbody>
+            <tr><th>Total</th><td>${data.totalRequests}</td><th>Concurrency</th><td>${data.concurrency}</td></tr>
+            <tr><th>Success</th><td>${data.successCount}</td><th>Error</th><td>${data.errorCount}</td></tr>
+            <tr><th>RPS</th><td>${data.requestsPerSecond}</td><th>Duration</th><td>${data.totalDurationMs} ms</td></tr>
+            <tr><th>Avg</th><td>${data.avgLatencyMs} ms</td><th>p95</th><td>${data.p95LatencyMs} ms</td></tr>
+            <tr><th>Min</th><td>${data.minLatencyMs} ms</td><th>Max</th><td>${data.maxLatencyMs} ms</td></tr>
+          </tbody>
+        </table>
+      `;
+    }
+
     async function loadRules() {
       rules.textContent = "룰을 불러오는 중입니다.";
       renderRules(await request("/api/ops/rules"));
@@ -389,6 +532,13 @@
     async function loadLogs() {
       logs.textContent = "로그를 불러오는 중입니다.";
       renderLogs(await request("/api/ops/moderation-logs?limit=8"));
+    }
+
+    async function loadMetrics() {
+      const data = await request("/api/ops/metrics");
+      renderMetricCards(data);
+      renderLatencyChart(data.p95LatencyMs);
+      renderBottleneck(data);
     }
 
     form.addEventListener("submit", async (event) => {
@@ -423,9 +573,31 @@
 
     document.querySelector("#reload-rules").addEventListener("click", loadRules);
     document.querySelector("#reload-logs").addEventListener("click", loadLogs);
+    document.querySelector("#reload-metrics").addEventListener("click", loadMetrics);
+
+    loadForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(loadForm).entries());
+      payload.totalRequests = Number(payload.totalRequests);
+      payload.concurrency = Number(payload.concurrency);
+      loadResult.innerHTML = `<div class="muted">부하테스트 실행 중입니다.</div>`;
+      try {
+        const data = await request("/api/ops/load-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        renderLoadResult(data);
+        await loadMetrics();
+        await loadLogs();
+      } catch (error) {
+        loadResult.innerHTML = `<pre>${escapeHtml(error.message)}</pre>`;
+      }
+    });
 
     loadRules().catch((error) => { rules.innerHTML = `<pre>${escapeHtml(error.message)}</pre>`; });
     loadLogs().catch((error) => { logs.innerHTML = `<pre>${escapeHtml(error.message)}</pre>`; });
+    loadMetrics().catch((error) => { bottleneck.innerHTML = `<pre>${escapeHtml(error.message)}</pre>`; });
   </script>
 </body>
 </html>
