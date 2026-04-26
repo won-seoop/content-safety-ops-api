@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Content Safety Ops</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #687382;
+      --line: #d9dee7;
+      --accent: #ff6f0f;
+      --allow: #0f8f5f;
+      --review: #b7791f;
+      --block: #c2413a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+      gap: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    main {
+      padding: 24px 0 40px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+      gap: 16px;
+      align-items: start;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 11px;
+      color: var(--text);
+      font: inherit;
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 116px;
+      resize: vertical;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+      padding: 11px 14px;
+      min-height: 42px;
+    }
+
+    button.secondary {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .result {
+      display: grid;
+      gap: 10px;
+    }
+
+    .decision {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .ALLOW {
+      background: var(--allow);
+    }
+
+    .REVIEW {
+      background: var(--review);
+    }
+
+    .BLOCK {
+      background: var(--block);
+    }
+
+    .score {
+      font-size: 34px;
+      font-weight: 800;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: #fafafa;
+      font-size: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    pre {
+      overflow: auto;
+      margin: 0;
+      border-radius: 6px;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 12px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 860px) {
+      .grid,
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <h1>Content Safety Ops</h1>
+      <a class="muted" href="/docs">OpenAPI docs</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid">
+      <section>
+        <h2>콘텐츠 검수</h2>
+        <form id="check-form">
+          <div class="row">
+            <div>
+              <label for="userId">userId</label>
+              <input id="userId" name="userId" type="number" min="1" value="1" required>
+            </div>
+            <div>
+              <label for="category">category</label>
+              <select id="category" name="category">
+                <option>DIGITAL</option>
+                <option>FURNITURE</option>
+                <option>FASHION</option>
+                <option>ETC</option>
+              </select>
+            </div>
+          </div>
+          <label for="title">title</label>
+          <input id="title" name="title" value="아이폰 싸게 팝니다" required>
+          <label for="content">content</label>
+          <textarea id="content" name="content" required>선입금하면 택배 보내드려요. 카톡 주세요.</textarea>
+          <label for="price">price</label>
+          <input id="price" name="price" type="number" min="0" value="100000" required>
+          <div class="actions">
+            <button type="submit">검수 실행</button>
+            <button class="secondary" type="button" id="normal">정상 예시</button>
+            <button class="secondary" type="button" id="block">차단 예시</button>
+          </div>
+        </form>
+      </section>
+
+      <div class="stack">
+        <section>
+          <h2>판정 결과</h2>
+          <div id="result" class="result">
+            <div class="muted">검수 실행 후 결과가 표시됩니다.</div>
+          </div>
+        </section>
+
+        <section>
+          <h2>최근 로그</h2>
+          <div class="actions">
+            <button class="secondary" type="button" id="reload-logs">새로고침</button>
+          </div>
+          <div id="logs" class="muted">로그를 불러오는 중입니다.</div>
+        </section>
+      </div>
+    </div>
+
+    <section style="margin-top:16px;">
+      <h2>운영정책 룰</h2>
+      <div class="actions">
+        <button class="secondary" type="button" id="reload-rules">새로고침</button>
+      </div>
+      <div id="rules" class="muted">룰을 불러오는 중입니다.</div>
+    </section>
+  </main>
+
+  <script>
+    const result = document.querySelector("#result");
+    const rules = document.querySelector("#rules");
+    const logs = document.querySelector("#logs");
+    const form = document.querySelector("#check-form");
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    async function request(path, options) {
+      const response = await fetch(path, options);
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`${response.status} ${body}`);
+      }
+      return response.json();
+    }
+
+    function renderResult(data) {
+      const matched = data.matchedRules.length
+        ? data.matchedRules.map((rule) => `<span class="chip">${escapeHtml(rule)}</span>`).join("")
+        : `<span class="muted">매칭된 룰 없음</span>`;
+      result.innerHTML = `
+        <span class="decision ${data.decision}">${data.decision}</span>
+        <div><span class="score">${data.riskScore}</span><span class="muted"> / risk score</span></div>
+        <div>${escapeHtml(data.reason)}</div>
+        <div class="chips">${matched}</div>
+      `;
+    }
+
+    function renderRules(items) {
+      rules.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Rule</th><th>Keyword</th><th>Score</th><th>Action</th><th>Category</th><th>Enabled</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item) => `
+              <tr>
+                <td>${item.id}</td>
+                <td>${escapeHtml(item.ruleName)}</td>
+                <td>${escapeHtml(item.keyword)}</td>
+                <td>${item.score}</td>
+                <td>${escapeHtml(item.action)}</td>
+                <td>${escapeHtml(item.category)}</td>
+                <td>${item.enabled ? "true" : "false"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderLogs(items) {
+      if (!items.length) {
+        logs.innerHTML = `<div class="muted">아직 로그가 없습니다.</div>`;
+        return;
+      }
+      logs.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Decision</th><th>Score</th><th>Title</th></tr>
+          </thead>
+          <tbody>
+            ${items.slice(0, 8).map((item) => `
+              <tr>
+                <td>${item.id}</td>
+                <td><span class="decision ${item.decision}">${item.decision}</span></td>
+                <td>${item.riskScore}</td>
+                <td>${escapeHtml(item.title)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function loadRules() {
+      rules.textContent = "룰을 불러오는 중입니다.";
+      renderRules(await request("/api/ops/rules"));
+    }
+
+    async function loadLogs() {
+      logs.textContent = "로그를 불러오는 중입니다.";
+      renderLogs(await request("/api/ops/moderation-logs?limit=8"));
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.userId = Number(payload.userId);
+      payload.price = Number(payload.price);
+      result.innerHTML = `<div class="muted">검수 중입니다.</div>`;
+      try {
+        renderResult(await request("/api/moderations/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }));
+        await loadLogs();
+      } catch (error) {
+        result.innerHTML = `<pre>${escapeHtml(error.message)}</pre>`;
+      }
+    });
+
+    document.querySelector("#normal").addEventListener("click", () => {
+      form.title.value = "책상 판매합니다";
+      form.content.value = "상태 좋고 직거래 가능합니다.";
+      form.price.value = "30000";
+    });
+
+    document.querySelector("#block").addEventListener("click", () => {
+      form.title.value = "불법 물품 거래";
+      form.content.value = "선입금 후 카톡으로 계좌 보내주세요.";
+      form.price.value = "10000";
+    });
+
+    document.querySelector("#reload-rules").addEventListener("click", loadRules);
+    document.querySelector("#reload-logs").addEventListener("click", loadLogs);
+
+    loadRules().catch((error) => { rules.innerHTML = `<pre>${escapeHtml(error.message)}</pre>`; });
+    loadLogs().catch((error) => { logs.innerHTML = `<pre>${escapeHtml(error.message)}</pre>`; });
+  </script>
+</body>
+</html>

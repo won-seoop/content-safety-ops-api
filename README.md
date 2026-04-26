@@ -226,6 +226,8 @@ erDiagram
 
 FastAPI 자동 문서는 실행 후 아래 주소에서 확인할 수 있습니다.
 
+간단한 운영 확인 UI는 실행 후 `http://localhost:8000/`에서 사용할 수 있습니다.
+
 ```text
 http://localhost:8000/docs
 ```
