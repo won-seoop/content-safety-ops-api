@@ -1,6 +1,12 @@
 # content-safety-ops-api
 
-당근 운영개발팀 전환형 인턴 지원용 백엔드 포트폴리오 프로젝트입니다. 사용자가 작성한 게시글을 운영정책 룰 기반으로 자동 검수하고, 스팸/사기/어뷰징 위험도를 계산해 `ALLOW`, `REVIEW`, `BLOCK` 중 하나로 판정합니다.
+ 사용자가 작성한 게시글을 운영정책 룰 기반으로 자동 검수하고, 스팸/사기/어뷰징 위험도를 계산해 `ALLOW`, `REVIEW`, `BLOCK` 중 하나로 판정합니다.
+
+
+| ALLOW | BLOCK | REVIEW |
+|-------|-------|--------|
+| <img width="908" height="909" alt="image" src="https://github.com/user-attachments/assets/acb4ae98-2b30-4d74-bdc8-bdb2509ffb14" /> |  <img width="894" height="948" alt="image" src="https://github.com/user-attachments/assets/a79b706a-1b7a-4138-a2f8-efa3a03bd002" /> |   <img width="902" height="909" alt="image" src="https://github.com/user-attachments/assets/2d0da983-737c-491a-881e-92124d603efd" /> |
+
 
 ---
 
