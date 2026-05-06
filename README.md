@@ -549,15 +549,10 @@ curl -X PATCH http://localhost:8000/api/ops/rules/1/status \
 curl "http://localhost:8000/api/ops/moderation-logs?limit=20&offset=0"
 ```
 
----
-
-## 18. 포트폴리오용 핵심 문장
-
-> FastAPI, PostgreSQL, Redis를 활용해 운영정책 기반 콘텐츠 검수 자동화 API를 구현했습니다. 운영정책 룰을 DB로 관리하고, 게시글의 위험 키워드를 점수화하여 `ALLOW`, `REVIEW`, `BLOCK`으로 판정했으며, 동일 콘텐츠 재검수는 Redis 캐싱을 적용해 DB 조회와 룰 계산 비용을 줄였습니다.
 
 ---
 
-## 19. 프로젝트 의의
+## 18. 프로젝트 의의
 
 이 프로젝트는 단순한 키워드 필터링이 아니라, 운영정책을 데이터화하고 자동화하는 백엔드 구조를 구현한 프로젝트입니다.
 
